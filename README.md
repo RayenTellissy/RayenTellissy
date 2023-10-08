@@ -1,5 +1,5 @@
 - 👋 Hi, I’m @RayenTellissy
-- 🖥️ I'm currently making Wavecord (go check it out!)
+- 🖥️ I'm currently working on Wavecord (go check it out!)
 
 <!---
 RayenTellissy/RayenTellissy is a ✨ special ✨ repository because its `README.md` (this file) appears on your GitHub profile.
