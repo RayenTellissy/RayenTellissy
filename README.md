@@ -1,4 +1,4 @@
-- 👋 Hi, I’m @RayenTellissy
+- 👋 Hi, I’m Ryan
 - 🖥️ I'm currently working on Wavecord (go check it out!)
 
 <!---
