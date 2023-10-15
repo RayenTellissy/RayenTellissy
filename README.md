@@ -1,5 +1,7 @@
 - 👋 Hi, I’m Ryan
-- 🖥️ I'm currently working on Wavecord (go check it out!)
+- 🔭 I’m currently working on **Wavecord**
+- 🌱 I’m currently learning **NestJS**
+- 👯 I’m looking to collaborate on **any React or React Native app**
   
 # 💻 Tech Stack:
 ![JavaScript](https://img.shields.io/badge/Javascript-292929?style=for-the-badge&logo=javascript&logoColor=fcdd01)
@@ -48,3 +50,9 @@
 ![Linux](https://img.shields.io/badge/linux-fdc625?style=for-the-badge&logo=linux&logoColor=black)
 ![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)
 ![Git](https://img.shields.io/badge/git-%23F05033.svg?style=for-the-badge&logo=git&logoColor=white)
+
+# 📈 Github Stats:
+![streak-stats](https://github-readme-streak-stats.herokuapp.com/?user=RayenTellissy&theme=dark&hide_border=true)
+![top-langs](https://github-readme-stats.vercel.app/api/top-langs/?username=RayenTellissy&theme=dark&hide_border=true&include_all_commits=true&count_private=true&layout=compact)
+# 🏆 Github Trophies:
+![github-trophies](https://github-profile-trophy.vercel.app/?username=RayenTellissy&theme=discord&no-frame=true&no-bg=true&margin-w=4)
