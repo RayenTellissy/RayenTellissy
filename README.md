@@ -2,6 +2,7 @@
 - 🔭 I’m currently working on **Wavecord**
 - 🌱 I’m currently learning **NestJS**
 - 👯 I’m looking to collaborate on **any React or React Native app**
+<br><br>[![profile-views](https://visitcount.itsvg.in/api?id=RayenTellissy&icon=0&color=6)](https://visitcount.itsvg.in)
   
 # 💻 Tech Stack:
 ![JavaScript](https://img.shields.io/badge/Javascript-292929?style=for-the-badge&logo=javascript&logoColor=fcdd01)
