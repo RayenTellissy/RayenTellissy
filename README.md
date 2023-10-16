@@ -1,9 +1,9 @@
 ### <h1>👋 Hi, I’m Ryan</h1><br>
 
 <img align="right" src="https://github-readme-stats.vercel.app/api?username=RayenTellissy&show_icons=true&theme=radical" />
-<p>- 🔭 I’m currently working on **Wavecord**</p>
-<p>- 🌱 I’m currently learning **NestJS**</p>
-<p>- 👯 I’m looking to collaborate on **any React or React Native app**</p>
+<p>- 🔭 I’m currently working on <strong>Wavecord</strong></p>
+<p>- 🌱 I’m currently learning <strong>NestJS</strong></p>
+<p>- 👯 I’m looking to collaborate on <strong>any React or React Native app</strong></p>
 <br><br>
   
 # 💻 Tech Stack:
