@@ -4,7 +4,7 @@
 <p>- 🔭 I’m currently working on <strong>Wavecord</strong></p>
 <p>- 🌱 I’m currently learning <strong>NestJS</strong></p>
 <p>- 👯 I’m looking to collaborate on <strong>any React or React Native app</strong></p>
-<br>
+<br><img src="https://visitcount.itsvg.in/api?id=RayenTellissy&icon=0&color=6" />
   
 # 💻 Tech Stack:
 ![JavaScript](https://img.shields.io/badge/Javascript-292929?style=for-the-badge&logo=javascript&logoColor=fcdd01)
