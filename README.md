@@ -1,8 +1,7 @@
 ### <h1>👋 Hi, I’m Ryan</h1><br>
 
 <img align="right" src="https://github-readme-stats.vercel.app/api?username=RayenTellissy&show_icons=true&theme=radical" />
-<p>- 🔭 I’m currently working on <strong>Infinity</strong></p>
-<p>- 🌱 I’m currently learning <strong>tRPC</strong></p>
+<p>- 🔭 I’m currently working at <strong>InnoThink</strong></p>
 <p>- 👯 I’m looking to collaborate on <strong>any React or React Native app</strong></p>
 <br><img src="https://visitcount.itsvg.in/api?id=RayenTellissy&icon=0&color=6" />
   
