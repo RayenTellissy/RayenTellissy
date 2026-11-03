@@ -160,35 +160,61 @@ function dotTile(id, columns, rows, minRadius, maxRadius, random) {
   );
 }
 
-const crest = (color, peak) => [
-  [0, color, 0],
-  [0.38, color, 0],
-  [0.5, color, peak],
-  [0.62, color, 0],
-  [1, color, 0],
+// Wavelength is relative to the image width; center, amplitude, thickness and bob to the height of the field.
+const RIBBONS = [
+  { id: 'waveA', peak: 0.95, wavelength: 0.62, center: 0.28, amplitude: 0.16, twist: 0.8, thickness: 0.26, seconds: 8, direction: 1, bob: 0.05, bobSeconds: 7 },
+  { id: 'waveB', peak: 0.75, wavelength: 0.86, center: 0.52, amplitude: 0.2, twist: 2.6, thickness: 0.22, seconds: 12, direction: -1, bob: 0.06, bobSeconds: 9 },
+  { id: 'waveC', peak: 0.85, wavelength: 0.5, center: 0.76, amplitude: 0.12, twist: 4.1, thickness: 0.2, seconds: 7, direction: 1, bob: 0.04, bobSeconds: 6 },
 ];
 
-const BANDS = [
-  { id: 'rise', shift: [90, -430], seconds: 5, stops: crest('#fff', 1) },
-  { id: 'driftA', shift: [760, 210], seconds: 8, stops: crest('#fff', 0.75) },
-  { id: 'cutA', shift: [530, 170], seconds: 7, stops: crest('#000', 0.9) },
-  { id: 'cutB', shift: [-370, 330], seconds: 9, stops: crest('#000', 0.8) },
-];
+// Stacked strokes fade a ribbon's edges without a blur filter, which would have to re-run on every frame.
+const SOFT_EDGE = [0.875, 0.75, 0.625, 0.5, 0.375, 0.25, 0.125];
+const CORE = SOFT_EDGE.slice(3);
 
-function bandGradient({ id, shift: [dx, dy], stops }) {
-  const stopTags = stops
-    .map(([offset, color, alpha]) => `<stop offset="${offset}" stop-color="${color}" stop-opacity="${alpha}"/>`)
-    .join('');
-  return `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" spreadMethod="repeat" x1="0" y1="0" x2="${dx}" y2="${dy}">${stopTags}</linearGradient>`;
+// Per-stroke opacities that composite to a bell-shaped falloff, so no single stroke edge shows across a dot.
+function strokeOpacities(scales, peak) {
+  const edge = scales[0] + scales[0] - scales[1];
+  let lit = 0;
+  return scales.map((scale) => {
+    const target = peak * (1 - (scale / edge) ** 2) ** 2;
+    const opacity = 1 - (1 - target) / (1 - lit);
+    lit = target;
+    return opacity;
+  });
 }
 
-// Slides by exactly one gradient period per loop, so it never visibly restarts.
-// The rect moves rather than the gradient because Safari doesn't repaint when only gradientTransform changes.
-// It's oversized to still cover the field at both ends of the slide.
-function bandLight({ id, shift: [dx, dy], seconds }, width, top, height) {
+// A wave with a second harmonic, so it undulates unevenly but still repeats exactly every wavelength.
+function wavePath({ id, wavelength, center, amplitude, twist, direction }, width, top, height) {
+  const period = Math.round(wavelength * width);
+  const step = 16;
+  const overhang = step * 2;
+  const start = direction > 0 ? -period - overhang : -overhang;
+  const count = Math.ceil((width + period + overhang * 2) / step);
+  const waveY = (x) => {
+    const phase = (2 * Math.PI * x) / period;
+    return Math.round(top + height * (center + amplitude * (0.72 * Math.sin(phase) + 0.28 * Math.sin(2 * phase + twist))));
+  };
+  let y = waveY(start);
+  let d = `M${start} ${y}`;
+  for (let i = 1; i <= count; i++) {
+    const next = waveY(start + i * step);
+    d += `l${step} ${next - y}`;
+    y = next;
+  }
+  return `<path id="${id}" d="${d}" fill="none"/>`;
+}
+
+// Slides by exactly one wavelength per loop, so it never visibly restarts, while bobbing up and down.
+function ribbon({ id, peak, wavelength, thickness, seconds, direction, bob, bobSeconds }, strokes, width, height) {
+  const opacities = strokeOpacities(strokes, peak);
+  const reach = round(bob * height);
+  const ease = '.45 0 .55 1';
+  const uses = strokes
+    .map((scale, i) => `<use href="#${id}" stroke="#fff" stroke-opacity="${round(opacities[i])}" stroke-width="${round(scale * thickness * height)}"/>`)
+    .join('');
   return (
-    `<rect x="${-Math.max(dx, 0)}" y="${top - Math.max(dy, 0)}" width="${width + Math.abs(dx)}" height="${height + Math.abs(dy)}" fill="url(#${id})">` +
-    `<animateTransform attributeName="transform" type="translate" from="0 0" to="${dx} ${dy}" dur="${seconds}s" repeatCount="indefinite"/></rect>`
+    `<g><animateTransform attributeName="transform" type="translate" values="0 ${-reach};0 ${reach};0 ${-reach}" keyTimes="0;.5;1" calcMode="spline" keySplines="${ease};${ease}" dur="${bobSeconds}s" repeatCount="indefinite"/>` +
+    `<g><animateTransform attributeName="transform" type="translate" from="0 0" to="${direction * Math.round(wavelength * width)} 0" dur="${seconds}s" repeatCount="indefinite"/>${uses}</g></g>`
   );
 }
 
@@ -271,21 +297,21 @@ function build({ width, fieldRows, labelWidth, type }) {
     dotTile('small', 1, 1, 1.25, 1.25, random) +
     `<mask id="dots" maskUnits="userSpaceOnUse" ${field}><rect ${field} fill="url(#medium)"/></mask>` +
     `<mask id="swell" maskUnits="userSpaceOnUse" ${field}><rect ${field} fill="url(#large)"/></mask>` +
-    BANDS.map(bandGradient).join('') +
+    RIBBONS.map((wave) => wavePath(wave, width, fieldTop, fieldRows * PITCH)).join('') +
     `<linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">` +
     `<stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".95"/></linearGradient>` +
     `<linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">` +
     `<stop offset="0" stop-color="#000" stop-opacity=".3"/><stop offset=".5" stop-color="#000" stop-opacity=".1"/><stop offset=".8" stop-color="#000" stop-opacity="0"/></linearGradient>`;
 
-  const bands = () => BANDS.map((band) => bandLight(band, width, fieldTop, fieldHeight)).join('');
+  const ribbons = (strokes) => RIBBONS.map((wave) => ribbon(wave, strokes, width, fieldRows * PITCH)).join('');
 
-  // The same bands light both dot sizes, so a dot looks like it swells as a crest passes over it.
+  // The middle of each ribbon also lights the larger dots, so a dot looks like it swells as a wave passes over it.
   const light =
     `<g mask="url(#dots)">` +
-    `<rect ${field} fill="#fff" fill-opacity=".25"/>` +
-    `<g class="live">${bands()}</g>` +
+    `<rect ${field} fill="#fff" fill-opacity=".14"/>` +
+    `<g class="live">${ribbons(SOFT_EDGE)}</g>` +
     `<rect ${field} fill="url(#floor)"/></g>` +
-    `<g class="live" mask="url(#swell)">${bands()}</g>`;
+    `<g class="live" mask="url(#swell)">${ribbons(CORE)}</g>`;
 
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="${description()}">` +
