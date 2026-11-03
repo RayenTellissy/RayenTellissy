@@ -160,17 +160,6 @@ function dotTile(id, columns, rows, minRadius, maxRadius, random) {
   );
 }
 
-// A repeating gradient that slides by exactly one period per loop, so it never visibly restarts.
-function band(id, [dx, dy], seconds, stops) {
-  const stopTags = stops
-    .map(([offset, color, alpha]) => `<stop offset="${offset}" stop-color="${color}" stop-opacity="${alpha}"/>`)
-    .join('');
-  return (
-    `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" spreadMethod="repeat" x1="0" y1="0" x2="${dx}" y2="${dy}">${stopTags}` +
-    `<animateTransform attributeName="gradientTransform" type="translate" from="0 0" to="${dx} ${dy}" dur="${seconds}s" repeatCount="indefinite"/></linearGradient>`
-  );
-}
-
 const soft = (color, peak) => [
   [0, color, 0],
   [0.35, color, peak * 0.15],
@@ -178,6 +167,30 @@ const soft = (color, peak) => [
   [0.65, color, peak * 0.15],
   [1, color, 0],
 ];
+
+const BANDS = [
+  { id: 'rise', shift: [90, -430], seconds: 14, stops: soft('#fff', 1) },
+  { id: 'driftA', shift: [760, 210], seconds: 23, stops: soft('#fff', 0.55) },
+  { id: 'cutA', shift: [530, 170], seconds: 19, stops: soft('#000', 0.9) },
+  { id: 'cutB', shift: [-370, 330], seconds: 29, stops: soft('#000', 0.8) },
+];
+
+function bandGradient({ id, shift: [dx, dy], stops }) {
+  const stopTags = stops
+    .map(([offset, color, alpha]) => `<stop offset="${offset}" stop-color="${color}" stop-opacity="${alpha}"/>`)
+    .join('');
+  return `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" spreadMethod="repeat" x1="0" y1="0" x2="${dx}" y2="${dy}">${stopTags}</linearGradient>`;
+}
+
+// Slides by exactly one gradient period per loop, so it never visibly restarts.
+// The rect moves rather than the gradient because Safari doesn't repaint when only gradientTransform changes.
+// It's oversized to still cover the field at both ends of the slide.
+function bandLight({ id, shift: [dx, dy], seconds }, width, top, height) {
+  return (
+    `<rect x="${-Math.max(dx, 0)}" y="${top - Math.max(dy, 0)}" width="${width + Math.abs(dx)}" height="${height + Math.abs(dy)}" fill="url(#${id})">` +
+    `<animateTransform attributeName="transform" type="translate" from="0 0" to="${dx} ${dy}" dur="${seconds}s" repeatCount="indefinite"/></rect>`
+  );
+}
 
 // Uneven top edge for the field: black paint above each column, plus a few knocked-out dots near the edge.
 function skyline(width, fieldTop, random) {
@@ -256,10 +269,7 @@ function build({ width, fieldRows, labelWidth, type }) {
     dotTile('large', 17, 13, 1.9, MAX_DOT_RADIUS, random) +
     dotTile('small', 1, 1, 1.25, 1.25, random) +
     `<mask id="dots" maskUnits="userSpaceOnUse" ${field}><rect ${field} fill="url(#large)"/></mask>` +
-    band('rise', [90, -430], 14, soft('#fff', 1)) +
-    band('driftA', [760, 210], 23, soft('#fff', 0.55)) +
-    band('cutA', [530, 170], 19, soft('#000', 0.9)) +
-    band('cutB', [-370, 330], 29, soft('#000', 0.8)) +
+    BANDS.map(bandGradient).join('') +
     `<linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">` +
     `<stop offset=".55" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".95"/></linearGradient>` +
     `<linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">` +
@@ -267,7 +277,7 @@ function build({ width, fieldRows, labelWidth, type }) {
 
   const light =
     `<g mask="url(#dots)">` +
-    `<g class="live"><rect ${field} fill="url(#rise)"/><rect ${field} fill="url(#driftA)"/><rect ${field} fill="url(#cutA)"/><rect ${field} fill="url(#cutB)"/></g>` +
+    `<g class="live">${BANDS.map((band) => bandLight(band, width, fieldTop, fieldHeight)).join('')}</g>` +
     `<rect class="still" ${field} fill="#fff" fill-opacity=".28"/>` +
     `<rect ${field} fill="url(#floor)"/></g>`;
 
