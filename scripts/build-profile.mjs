@@ -160,19 +160,19 @@ function dotTile(id, columns, rows, minRadius, maxRadius, random) {
   );
 }
 
-const soft = (color, peak) => [
+const crest = (color, peak) => [
   [0, color, 0],
-  [0.35, color, peak * 0.15],
+  [0.38, color, 0],
   [0.5, color, peak],
-  [0.65, color, peak * 0.15],
+  [0.62, color, 0],
   [1, color, 0],
 ];
 
 const BANDS = [
-  { id: 'rise', shift: [90, -430], seconds: 14, stops: soft('#fff', 1) },
-  { id: 'driftA', shift: [760, 210], seconds: 23, stops: soft('#fff', 0.55) },
-  { id: 'cutA', shift: [530, 170], seconds: 19, stops: soft('#000', 0.9) },
-  { id: 'cutB', shift: [-370, 330], seconds: 29, stops: soft('#000', 0.8) },
+  { id: 'rise', shift: [90, -430], seconds: 5, stops: crest('#fff', 1) },
+  { id: 'driftA', shift: [760, 210], seconds: 8, stops: crest('#fff', 0.75) },
+  { id: 'cutA', shift: [530, 170], seconds: 7, stops: crest('#000', 0.9) },
+  { id: 'cutB', shift: [-370, 330], seconds: 9, stops: crest('#000', 0.8) },
 ];
 
 function bandGradient({ id, shift: [dx, dy], stops }) {
@@ -266,29 +266,35 @@ function build({ width, fieldRows, labelWidth, type }) {
 
   const defs =
     `<clipPath id="card"><rect width="${width}" height="${height}" rx="16"/></clipPath>` +
-    dotTile('large', 17, 13, 1.9, MAX_DOT_RADIUS, random) +
+    dotTile('medium', 17, 13, 1.5, 2.4, random) +
+    dotTile('large', 19, 11, 2.7, MAX_DOT_RADIUS, random) +
     dotTile('small', 1, 1, 1.25, 1.25, random) +
-    `<mask id="dots" maskUnits="userSpaceOnUse" ${field}><rect ${field} fill="url(#large)"/></mask>` +
+    `<mask id="dots" maskUnits="userSpaceOnUse" ${field}><rect ${field} fill="url(#medium)"/></mask>` +
+    `<mask id="swell" maskUnits="userSpaceOnUse" ${field}><rect ${field} fill="url(#large)"/></mask>` +
     BANDS.map(bandGradient).join('') +
     `<linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">` +
-    `<stop offset=".55" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".95"/></linearGradient>` +
+    `<stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".95"/></linearGradient>` +
     `<linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">` +
-    `<stop offset="0" stop-color="#000" stop-opacity=".42"/><stop offset=".5" stop-color="#000" stop-opacity=".18"/><stop offset=".8" stop-color="#000" stop-opacity="0"/></linearGradient>`;
+    `<stop offset="0" stop-color="#000" stop-opacity=".3"/><stop offset=".5" stop-color="#000" stop-opacity=".1"/><stop offset=".8" stop-color="#000" stop-opacity="0"/></linearGradient>`;
 
+  const bands = () => BANDS.map((band) => bandLight(band, width, fieldTop, fieldHeight)).join('');
+
+  // The same bands light both dot sizes, so a dot looks like it swells as a crest passes over it.
   const light =
     `<g mask="url(#dots)">` +
-    `<g class="live">${BANDS.map((band) => bandLight(band, width, fieldTop, fieldHeight)).join('')}</g>` +
-    `<rect class="still" ${field} fill="#fff" fill-opacity=".28"/>` +
-    `<rect ${field} fill="url(#floor)"/></g>`;
+    `<rect ${field} fill="#fff" fill-opacity=".25"/>` +
+    `<g class="live">${bands()}</g>` +
+    `<rect ${field} fill="url(#floor)"/></g>` +
+    `<g class="live" mask="url(#swell)">${bands()}</g>`;
 
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="${description()}">` +
     `<title>${COPY.name}</title>` +
-    `<style>.still{display:none}@media (prefers-reduced-motion:reduce){.live{display:none}.still{display:inline}}</style>` +
+    `<style>@media (prefers-reduced-motion:reduce){.live{display:none}}</style>` +
     `<defs>${defs}</defs>` +
     `<g clip-path="url(#card)"><rect width="${width}" height="${height}" fill="#000"/>` +
     light +
-    `<rect ${field} fill="url(#small)" fill-opacity=".62"/>` +
+    `<rect ${field} fill="url(#small)" fill-opacity=".4"/>` +
     `<rect ${field} fill="url(#fade)"/>` +
     skyline(width, fieldTop, random) +
     // Reaches the top of the next row's largest dot: Safari shifts pattern tiles enough for the row above to peek through.
