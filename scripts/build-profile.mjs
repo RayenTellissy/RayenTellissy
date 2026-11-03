@@ -160,62 +160,28 @@ function dotTile(id, columns, rows, minRadius, maxRadius, random) {
   );
 }
 
-// Wavelength is relative to the image width; center, amplitude, thickness and bob to the height of the field.
-const RIBBONS = [
-  { id: 'waveA', peak: 0.95, wavelength: 0.62, center: 0.28, amplitude: 0.16, twist: 0.8, thickness: 0.26, seconds: 8, direction: 1, bob: 0.05, bobSeconds: 7 },
-  { id: 'waveB', peak: 0.75, wavelength: 0.86, center: 0.52, amplitude: 0.2, twist: 2.6, thickness: 0.22, seconds: 12, direction: -1, bob: 0.06, bobSeconds: 9 },
-  { id: 'waveC', peak: 0.85, wavelength: 0.5, center: 0.76, amplitude: 0.12, twist: 4.1, thickness: 0.2, seconds: 7, direction: 1, bob: 0.04, bobSeconds: 6 },
-];
-
-// Stacked strokes fade a ribbon's edges without a blur filter, which would have to re-run on every frame.
-const SOFT_EDGE = [0.875, 0.75, 0.625, 0.5, 0.375, 0.25, 0.125];
-const CORE = SOFT_EDGE.slice(3);
-
-// Per-stroke opacities that composite to a bell-shaped falloff, so no single stroke edge shows across a dot.
-function strokeOpacities(scales, peak) {
-  const edge = scales[0] + scales[0] - scales[1];
-  let lit = 0;
-  return scales.map((scale) => {
-    const target = peak * (1 - (scale / edge) ** 2) ** 2;
-    const opacity = 1 - (1 - target) / (1 - lit);
-    lit = target;
-    return opacity;
-  });
-}
-
-// A wave with a second harmonic, so it undulates unevenly but still repeats exactly every wavelength.
-function wavePath({ id, wavelength, center, amplitude, twist, direction }, width, top, height) {
-  const period = Math.round(wavelength * width);
-  const step = 16;
-  const overhang = step * 2;
-  const start = direction > 0 ? -period - overhang : -overhang;
-  const count = Math.ceil((width + period + overhang * 2) / step);
-  const waveY = (x) => {
-    const phase = (2 * Math.PI * x) / period;
-    return Math.round(top + height * (center + amplitude * (0.72 * Math.sin(phase) + 0.28 * Math.sin(2 * phase + twist))));
-  };
-  let y = waveY(start);
-  let d = `M${start} ${y}`;
-  for (let i = 1; i <= count; i++) {
-    const next = waveY(start + i * step);
-    d += `l${step} ${next - y}`;
-    y = next;
+// Soft blobs of light that drift up from below the image, swaying from side to side as they climb.
+// Each ends above the field, so its loop restart is never on screen.
+function plumes(width, fieldTop, fieldHeight, height, gradient, scale) {
+  const random = createRandom(11);
+  const count = Math.round(width / 80);
+  let out = '';
+  for (let i = 0; i < count; i++) {
+    const x = Math.round(((i + 0.2 + random() * 0.6) / count) * width);
+    const rx = Math.round((0.2 + random() * 0.14) * height * scale);
+    const ry = Math.round(rx * (1.3 + random() * 0.5));
+    const seconds = round(6 + random() * 4);
+    const delay = round(random() * seconds);
+    const sway = Math.round(24 + random() * 36);
+    const swaySeconds = round(3 + random() * 2.5);
+    const swayDelay = round(random() * swaySeconds);
+    const ease = '.45 0 .55 1';
+    out +=
+      `<g><animateTransform attributeName="transform" type="translate" values="${x} ${fieldTop + fieldHeight + ry};${x} ${fieldTop - ry}" keyTimes="0;1" dur="${seconds}s" begin="-${delay}s" repeatCount="indefinite"/>` +
+      `<g><animateTransform attributeName="transform" type="translate" values="${-sway} 0;${sway} 0;${-sway} 0" keyTimes="0;.5;1" calcMode="spline" keySplines="${ease};${ease}" dur="${swaySeconds}s" begin="-${swayDelay}s" repeatCount="indefinite"/>` +
+      `<ellipse rx="${rx}" ry="${ry}" fill="url(#${gradient})"/></g></g>`;
   }
-  return `<path id="${id}" d="${d}" fill="none"/>`;
-}
-
-// Slides by exactly one wavelength per loop, so it never visibly restarts, while bobbing up and down.
-function ribbon({ id, peak, wavelength, thickness, seconds, direction, bob, bobSeconds }, strokes, width, height) {
-  const opacities = strokeOpacities(strokes, peak);
-  const reach = round(bob * height);
-  const ease = '.45 0 .55 1';
-  const uses = strokes
-    .map((scale, i) => `<use href="#${id}" stroke="#fff" stroke-opacity="${round(opacities[i])}" stroke-width="${round(scale * thickness * height)}"/>`)
-    .join('');
-  return (
-    `<g><animateTransform attributeName="transform" type="translate" values="0 ${-reach};0 ${reach};0 ${-reach}" keyTimes="0;.5;1" calcMode="spline" keySplines="${ease};${ease}" dur="${bobSeconds}s" repeatCount="indefinite"/>` +
-    `<g><animateTransform attributeName="transform" type="translate" from="0 0" to="${direction * Math.round(wavelength * width)} 0" dur="${seconds}s" repeatCount="indefinite"/>${uses}</g></g>`
-  );
+  return out;
 }
 
 // Uneven top edge for the field: black paint above each column, plus a few knocked-out dots near the edge.
@@ -297,21 +263,22 @@ function build({ width, fieldRows, labelWidth, type }) {
     dotTile('small', 1, 1, 1.25, 1.25, random) +
     `<mask id="dots" maskUnits="userSpaceOnUse" ${field}><rect ${field} fill="url(#medium)"/></mask>` +
     `<mask id="swell" maskUnits="userSpaceOnUse" ${field}><rect ${field} fill="url(#large)"/></mask>` +
-    RIBBONS.map((wave) => wavePath(wave, width, fieldTop, fieldRows * PITCH)).join('') +
+    `<radialGradient id="glow"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".45" stop-color="#fff" stop-opacity=".6"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>` +
+    `<radialGradient id="glowCore"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>` +
     `<linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">` +
     `<stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".95"/></linearGradient>` +
     `<linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">` +
-    `<stop offset="0" stop-color="#000" stop-opacity=".3"/><stop offset=".5" stop-color="#000" stop-opacity=".1"/><stop offset=".8" stop-color="#000" stop-opacity="0"/></linearGradient>`;
+    `<stop offset="0" stop-color="#000" stop-opacity=".8"/><stop offset=".45" stop-color="#000" stop-opacity=".45"/><stop offset=".8" stop-color="#000" stop-opacity="0"/></linearGradient>`;
 
-  const ribbons = (strokes) => RIBBONS.map((wave) => ribbon(wave, strokes, width, fieldRows * PITCH)).join('');
+  const rising = (gradient, scale) => plumes(width, fieldTop, fieldHeight, fieldRows * PITCH, gradient, scale);
 
-  // The middle of each ribbon also lights the larger dots, so a dot looks like it swells as a wave passes over it.
+  // The middle of each plume also lights the larger dots, so a dot looks like it swells as the light passes over it.
   const light =
     `<g mask="url(#dots)">` +
     `<rect ${field} fill="#fff" fill-opacity=".14"/>` +
-    `<g class="live">${ribbons(SOFT_EDGE)}</g>` +
+    `<g class="live">${rising('glow', 1)}</g>` +
     `<rect ${field} fill="url(#floor)"/></g>` +
-    `<g class="live" mask="url(#swell)">${ribbons(CORE)}</g>`;
+    `<g class="live" mask="url(#swell)">${rising('glowCore', 0.6)}</g>`;
 
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="${description()}">` +
