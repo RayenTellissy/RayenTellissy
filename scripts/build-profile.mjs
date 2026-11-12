@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Generates assets/profile.svg, assets/profile-narrow.svg and README.md: a dot-field profile page as self-contained SVGs.
 // GitHub READMEs can't run scripts or load fonts, so text is outlined and the light is animated with SMIL.
+// The stack row inlines the logos in assets/stack/<id>.svg, because an SVG shown as an image can't load other files.
 // Edit COPY, then run: node scripts/build-profile.mjs
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
@@ -12,7 +13,23 @@ const COPY = {
     ['Mobile', 'iOS and Android apps.'],
     ['Desktop', 'Native apps for macOS and Windows.'],
   ],
-  footer: 'ryantellissy.com  ·  LinkedIn',
+  // Logos in the row under the dot field, left to right: [file in assets/stack, name for the description].
+  stack: [
+    ['typescript', 'TypeScript'],
+    ['rust', 'Rust'],
+    ['react', 'React'],
+    ['nextjs', 'Next.js'],
+    ['tailwind', 'Tailwind CSS'],
+    ['expo', 'Expo'],
+    ['swift', 'Swift'],
+    ['electron', 'Electron'],
+    ['nodejs', 'Node.js'],
+    ['nestjs', 'NestJS'],
+    ['postgresql', 'PostgreSQL'],
+    ['prisma', 'Prisma'],
+    ['redis', 'Redis'],
+    ['stripe', 'Stripe'],
+  ],
   // Real links, below the image: text inside an image can't be clicked.
   links: [
     ['Website', 'https://www.ryantellissy.com/'],
@@ -21,18 +38,21 @@ const COPY = {
   rawAssets: 'https://raw.githubusercontent.com/RayenTellissy/RayenTellissy/main/assets',
 };
 
+// `stack` sizes the logo row: logo size and centre-to-centre step in px, and the row's height in dot rows.
 const LAYOUTS = {
   'profile.svg': {
     width: 1000,
     fieldRows: 40,
     labelWidth: 112,
-    type: { name: 50, bio: 19, work: 19, workLeading: 34, footer: 16 },
+    type: { name: 50, bio: 19, work: 19, workLeading: 34 },
+    stack: { size: 40, step: 60, rows: 8 },
   },
   'profile-narrow.svg': {
     width: 560,
     fieldRows: 34,
     labelWidth: 112,
-    type: { name: 44, bio: 20, work: 21, workLeading: 38, footer: 20 },
+    type: { name: 44, bio: 20, work: 21, workLeading: 38 },
+    stack: { size: 28, step: 37, rows: 7 },
   },
 };
 
@@ -44,7 +64,6 @@ const INK = {
   bio: { fill: '#bdbdbd' },
   label: { fill: '#f5f5f5', weight: 0.3 },
   work: { fill: '#a8a8a8' },
-  footer: { fill: '#d8d8d8' },
 };
 
 const fonts = JSON.parse(readFileSync(new URL('./glyphs.json', import.meta.url)));
@@ -202,9 +221,28 @@ function skyline(width, fieldTop, random) {
   return `<path d="${d}V0Z${holes}" fill="#000"/>`;
 }
 
+// A logo file's contents, to nest in a sized <svg>. Ids inside are already unique across the logos.
+function logo(id) {
+  const file = readFileSync(new URL(`../assets/stack/${id}.svg`, import.meta.url), 'utf8');
+  const root = file.match(/<svg\b[^>]*>/);
+  const viewBox = root[0].match(/viewBox="([^"]+)"/)[1];
+  return { viewBox, body: file.slice(root.index + root[0].length, file.lastIndexOf('</svg>')).trim() };
+}
+
+// The stack as one centred row of faded logos, so it reads as background next to the text.
+function stackRow(center, middle, { size, step }) {
+  const left = center - ((COPY.stack.length - 1) * step) / 2 - size / 2;
+  const logos = COPY.stack.map(([id], i) => {
+    const { viewBox, body } = logo(id);
+    return `<svg x="${round(left + i * step)}" y="${round(middle - size / 2)}" width="${size}" height="${size}" viewBox="${viewBox}">${body}</svg>`;
+  });
+  return `<g opacity=".45">${logos.join('')}</g>`;
+}
+
 // The image's text for screen readers and search, since outlined text can't be read or selected.
 function description() {
-  return [`${COPY.name}.`, COPY.bio, ...COPY.work.map(([label, text]) => `${label}: ${text}`)]
+  const stack = `Stack: ${COPY.stack.map(([, name]) => name).join(', ')}.`;
+  return [`${COPY.name}.`, COPY.bio, ...COPY.work.map(([label, text]) => `${label}: ${text}`), stack]
     .join(' ')
     .replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;')
@@ -228,7 +266,7 @@ ${links}
 `;
 }
 
-function build({ width, fieldRows, labelWidth, type }) {
+function build({ width, fieldRows, labelWidth, type, stack }) {
   const ink = createInk();
   const random = createRandom(7);
   const center = width / 2;
@@ -247,14 +285,13 @@ function build({ width, fieldRows, labelWidth, type }) {
     ink.put('work', text, workX + labelWidth, baseline, 'sans', type.work);
   });
 
-  // Dot field, with a gap near the bottom that holds the links line.
+  // Dot field, with a gap near the bottom that holds the stack row.
   const fieldTop = Math.ceil((workTop + (COPY.work.length - 1) * type.workLeading + 74) / PITCH) * PITCH;
   const gapTop = fieldTop + fieldRows * PITCH;
-  const gapHeight = PITCH * 6;
+  const gapHeight = PITCH * stack.rows;
   const height = gapTop + gapHeight + PITCH * 3;
   const fieldHeight = height - fieldTop;
   const field = `x="0" y="${fieldTop}" width="${width}" height="${fieldHeight}"`;
-  ink.put('footer', COPY.footer, center, gapTop + gapHeight / 2 + type.footer * 0.36, 'mono', type.footer, 'center');
 
   const defs =
     `<clipPath id="card"><rect width="${width}" height="${height}" rx="16"/></clipPath>` +
@@ -292,6 +329,7 @@ function build({ width, fieldRows, labelWidth, type }) {
     skyline(width, fieldTop, random) +
     // Reaches the top of the next row's largest dot: Safari shifts pattern tiles enough for the row above to peek through.
     `<rect x="0" y="${gapTop}" width="${width}" height="${gapHeight + PITCH / 2 - MAX_DOT_RADIUS}" fill="#000"/>` +
+    stackRow(center, gapTop + gapHeight / 2, stack) +
     ink.svg() +
     `</g></svg>\n`
   );
