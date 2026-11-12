@@ -7,6 +7,4 @@
 
 <div align="center">
 
-[Website](https://www.ryantellissy.com/) · [LinkedIn](https://www.linkedin.com/in/ryantellissy/)
-
 </div>
